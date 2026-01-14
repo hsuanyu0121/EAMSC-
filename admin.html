@@ -2,168 +2,147 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>P!LOT | 治療師監控中心</title>
-
+    <title>P!LOT | 專業監控中心 (修正版)</title>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;700&display=swap');
-        body { background-color: #F8F6F2; color: #4A443F; font-family: 'Noto Sans TC', sans-serif; }
-        .risk-card-high { border-left: 8px solid #EF4444; background: #FFF1F1; }
-        .risk-card-low { border-left: 8px solid #10B981; background: #FFFFFF; }
-        .metric-value { font-family: 'Courier New', Courier, monospace; font-weight: bold; }
-        /* 動態跳動動畫 */
-        @keyframes pulse-red {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-        .animate-pulse-slow { animation: pulse-red 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
+        body { background-color: #F8F6F2; font-family: 'Noto Sans TC', sans-serif; }
+        .stat-card { background: white; border-radius: 2rem; padding: 1.5rem; border: 1px solid #E5E1DA; }
+        .student-card { transition: all 0.3s ease; border-left: 8px solid #10B981; }
+        .risk-high { border-left-color: #EF4444; background-color: #FFF5F5; }
     </style>
 </head>
-<body class="p-6 md:p-12">
+<body class="p-8">
 
-    <div class="max-w-7xl mx-auto">
-        <header class="flex justify-between items-end mb-12">
+    <div class="max-w-6xl mx-auto">
+        <header class="flex justify-between items-center mb-10">
             <div>
-                <h1 class="text-4xl font-black italic text-[#6B8E23] tracking-tighter">P!LOT Dashboard</h1>
-                <p class="text-sm font-bold opacity-40 uppercase tracking-widest mt-2">Therapist Real-time Monitoring</p>
+                <h1 class="text-3xl font-black text-[#6B8E23] italic">P!LOT Admin</h1>
+                <p id="debug-info" class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">系統連線檢查中...</p>
             </div>
-            <div class="text-right">
-                <div id="connection-status" class="flex items-center gap-2 text-xs font-bold text-green-600">
-                    <span class="relative flex h-2 w-2">
-                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                        <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                    </span>
-                    系統連線正常
-                </div>
-                <p id="last-update" class="text-[10px] opacity-30 mt-1">最後更新：尚未收到數據</p>
+            <div class="bg-white px-4 py-2 rounded-full shadow-sm text-xs font-bold text-green-600 border border-green-100">
+                ● 實時數據流已啟動
             </div>
         </header>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-            <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100">
-                <p class="text-[10px] font-black opacity-40 uppercase">監控中學生總數</p>
-                <p id="total-students" class="text-4xl font-black mt-2">0</p>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+            <div class="stat-card">
+                <p class="text-[10px] font-black opacity-30 uppercase">總監控人數</p>
+                <p id="total-count" class="text-4xl font-black">0</p>
             </div>
-            <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100">
-                <p class="text-[10px] font-black text-red-400 uppercase">高風險預警 (Anxiety > 3)</p>
-                <p id="high-risk-count" class="text-4xl font-black text-red-500 mt-2">0</p>
+            <div class="stat-card">
+                <p class="text-[10px] font-black text-red-400 uppercase">高風險預警</p>
+                <p id="risk-count" class="text-4xl font-black text-red-500">0</p>
             </div>
-            <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100">
-                <p class="text-[10px] font-black text-blue-400 uppercase">平均累積獎勵 (RL Reward)</p>
-                <p id="avg-reward" class="text-4xl font-black text-blue-600 mt-2">0.0</p>
+            <div class="stat-card">
+                <p class="text-[10px] font-black text-blue-400 uppercase">平均累積獎勵</p>
+                <p id="avg-reward" class="text-4xl font-black text-blue-600">0</p>
             </div>
         </div>
 
-        <div id="monitorGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <div class="col-span-full py-20 text-center opacity-30 italic">
-                正在等待學生端數據上傳...
+        <div id="monitorGrid" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="col-span-full text-center py-20 text-slate-300 italic">
+                正在等待學生傳送數據...<br>
+                (請確保學生端已登入並發送訊息)
             </div>
         </div>
     </div>
 
     <script>
-        // ======= 1. 初始化設定 (必須與學生端相同) =======
-        const firebaseConfig = {
-            apiKey: "你的_FIREBASE_API_KEY",
-            authDomain: "你的_PROJECT_ID.firebaseapp.com",
-            projectId: "你的_PROJECT_ID",
-            storageBucket: "你的_PROJECT_ID.appspot.com",
-            messagingSenderId: "你的_SENDER_ID",
-            appId: "你的_APP_ID"
+        // ⚠️ 請務必在此填入與學生端【完全相同】的 Config
+        const firebaseConfig = {apiKey: "AIzaSyCYXhTT_MzhE6K2OE6HuAx9kwEZlIKbZMg",
+            authDomain: "eamsc-929aa.firebaseapp.com",
+            projectId: "eamsc-929aa",
+            storageBucket: "eamsc-929aa.firebasestorage.app",
+            messagingSenderId: "1010678005753",
+            appId: "1:1010678005753:web:6283391cec141c7e664728",
+            measurementId: "G-TQ48PSK5H4"
+            
         };
 
-        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        // 初始化 Firebase
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
         const db = firebase.firestore();
 
-        // ======= 2. 即時數據監聽邏輯 =======
-        function startMonitoring() {
-            // 監聽 monitor_center 資料集
-            db.collection("monitor_center").orderBy("timestamp", "desc").onSnapshot(snapshot => {
+        // --- 核心監聽邏輯 ---
+        function listenToStudents() {
+            // 注意：這裡的 "monitor_center" 必須與學生端寫入的集合名稱一模一樣
+            db.collection("monitor_center").orderBy("timestamp", "desc").onSnapshot((snapshot) => {
                 const grid = document.getElementById('monitorGrid');
                 grid.innerHTML = "";
                 
                 let total = 0;
                 let risk = 0;
-                let rewards = 0;
+                let totalReward = 0;
 
                 if (snapshot.empty) {
-                    grid.innerHTML = '<div class="col-span-full py-20 text-center opacity-30 italic">目前尚無學生登入系統</div>';
+                    document.getElementById('debug-info').innerText = "連線成功：資料庫目前是空的";
                     return;
                 }
 
-                snapshot.forEach(doc => {
+                snapshot.forEach((doc) => {
                     total++;
                     const data = doc.data();
-                    const anxietyValue = parseFloat(data.anxiety_reduction);
-                    const rewardValue = parseFloat(data.cumulative_reward);
-                    rewards += rewardValue;
+                    const anxiety = parseFloat(data.anxiety_reduction || 0);
+                    const reward = parseFloat(data.cumulative_reward || 0);
+                    totalReward += reward;
 
-                    // 判斷風險等級 (焦慮值 > 3 即為高風險)
-                    const isHighRisk = anxietyValue > 3;
+                    // 判斷高風險 (焦慮值 > 5)
+                    const isHighRisk = anxiety > 5;
                     if (isHighRisk) risk++;
 
-                    // 轉換時間格式
-                    const timeStr = data.timestamp ? new Date(data.timestamp.seconds * 1000).toLocaleString() : '同步中...';
+                    const time = data.timestamp ? new Date(data.timestamp.seconds * 1000).toLocaleTimeString() : "同步中";
 
-                    // 建立卡片 HTML
                     const card = `
-                        <div class="p-8 rounded-[2.5rem] shadow-sm transition-all hover:shadow-xl ${isHighRisk ? 'risk-card-high animate-pulse-slow' : 'risk-card-low'}">
-                            <div class="flex items-start justify-between mb-6">
-                                <div class="flex items-center gap-3">
-                                    <img src="${data.userAvatar}" class="w-12 h-12 rounded-full border-2 border-white">
-                                    <div>
-                                        <h3 class="font-bold text-lg">${data.userName}</h3>
-                                        <p class="text-[9px] font-black opacity-30 uppercase">${timeStr}</p>
-                                    </div>
+                        <div class="bg-white p-6 rounded-[2rem] shadow-sm student-card ${isHighRisk ? 'risk-high' : ''}">
+                            <div class="flex items-center gap-4 mb-4">
+                                <img src="${data.userAvatar || 'https://via.placeholder.com/50'}" class="w-12 h-12 rounded-full border-2 border-white shadow-sm">
+                                <div class="flex-1">
+                                    <h3 class="font-black text-slate-700">${data.userName || '匿名學生'}</h3>
+                                    <p class="text-[10px] opacity-40 uppercase font-bold tracking-widest">${time}</p>
                                 </div>
-                                ${isHighRisk ? '<span class="bg-red-500 text-white text-[9px] px-3 py-1 rounded-full font-black">HIGH RISK</span>' : ''}
+                                ${isHighRisk ? '<span class="bg-red-500 text-white text-[9px] px-2 py-1 rounded-full animate-pulse font-bold">❗ HIGH RISK</span>' : ''}
                             </div>
-
-                            <div class="grid grid-cols-2 gap-4 mb-6">
-                                <div class="bg-slate-50/50 p-3 rounded-2xl border border-slate-100">
-                                    <p class="text-[9px] font-black opacity-40 mb-1">焦慮指標</p>
-                                    <p class="metric-value text-xl ${isHighRisk ? 'text-red-500' : 'text-green-600'}">${anxietyValue.toFixed(1)}</p>
+                            
+                            <div class="grid grid-cols-2 gap-3 mb-4">
+                                <div class="bg-slate-50 p-3 rounded-2xl">
+                                    <p class="text-[9px] font-black opacity-30 uppercase">焦慮減緩率</p>
+                                    <p class="text-xl font-black ${anxiety > 5 ? 'text-red-500' : 'text-blue-600'}">${anxiety.toFixed(1)}%</p>
                                 </div>
-                                <div class="bg-slate-50/50 p-3 rounded-2xl border border-slate-100">
-                                    <p class="text-[9px] font-black opacity-40 mb-1">累積獎勵</p>
-                                    <p class="metric-value text-xl text-blue-600">${rewardValue.toFixed(1)}</p>
-                                </div>
-                            </div>
-
-                            <div class="space-y-3">
-                                <div>
-                                    <p class="text-[9px] font-black opacity-40 uppercase mb-1">目前介入策略</p>
-                                    <p class="text-xs font-bold text-[#6B8E23] bg-[#6B8E23]/10 inline-block px-3 py-1 rounded-lg">${data.strategy}</p>
-                                </div>
-                                <div>
-                                    <p class="text-[9px] font-black opacity-40 uppercase mb-1">最後訊息預覽</p>
-                                    <p class="text-xs italic text-slate-500 line-clamp-2">"${data.last_msg}"</p>
+                                <div class="bg-slate-50 p-3 rounded-2xl">
+                                    <p class="text-[9px] font-black opacity-30 uppercase">累積獎勵</p>
+                                    <p class="text-xl font-black text-[#6B8E23]">${reward.toFixed(0)}</p>
                                 </div>
                             </div>
 
-                            <div class="mt-8 pt-6 border-t border-slate-100 flex justify-between items-center">
-                                <button onclick="alert('聯絡學生：${data.userName}')" class="text-[10px] font-black text-slate-400 hover:text-slate-800 transition">發送介入通知</button>
-                                <span class="text-[9px] font-bold opacity-20">ID: ${data.uid.substring(0,8)}...</span>
+                            <div class="p-4 bg-[#F9F8F6] rounded-2xl border border-slate-100">
+                                <p class="text-[9px] font-black opacity-40 uppercase mb-1">最後訊息摘要</p>
+                                <p class="text-xs text-slate-500 italic line-clamp-2">"${data.last_msg || '無對話內容'}"</p>
                             </div>
                         </div>
                     `;
                     grid.innerHTML += card;
                 });
 
-                // 更新頂部統計數據
-                document.getElementById('total-students').innerText = total;
-                document.getElementById('high-risk-count').innerText = risk;
-                document.getElementById('avg-reward').innerText = (total > 0 ? (rewards / total).toFixed(1) : 0);
-                document.getElementById('last-update').innerText = `最後更新：${new Date().toLocaleTimeString()}`;
+                // 更新頂部數據
+                document.getElementById('total-count').innerText = total;
+                document.getElementById('risk-count').innerText = risk;
+                document.getElementById('avg-reward').innerText = (totalReward / (total || 1)).toFixed(0);
+                document.getElementById('debug-info').innerText = `最後更新：${new Date().toLocaleTimeString()}`;
+
+            }, (error) => {
+                // 🔴 如果權限有問題，這裡會報錯
+                console.error("Firestore Error:", error);
+                document.getElementById('debug-info').innerText = "錯誤：" + error.message;
+                document.getElementById('debug-info').classList.add('text-red-500');
             });
         }
 
-        // 啟動監測
-        startMonitoring();
+        listenToStudents();
     </script>
 </body>
 </html>
