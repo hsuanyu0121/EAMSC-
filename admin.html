@@ -1,148 +1,62 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>P!LOT | 專業監控中心 (修正版)</title>
+    <title>P!LOT | Admin Dashboard</title>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
-        body { background-color: #F8F6F2; font-family: 'Noto Sans TC', sans-serif; }
-        .stat-card { background: white; border-radius: 2rem; padding: 1.5rem; border: 1px solid #E5E1DA; }
-        .student-card { transition: all 0.3s ease; border-left: 8px solid #10B981; }
-        .risk-high { border-left-color: #EF4444; background-color: #FFF5F5; }
+        .risk-card { border-left: 10px solid #EF4444; background: #FFF1F1; animation: pulse-bg 2s infinite; }
+        @keyframes pulse-bg { 0% { background: #FFF1F1; } 50% { background: #FFE4E4; } 100% { background: #FFF1F1; } }
     </style>
 </head>
-<body class="p-8">
+<body class="p-10 bg-slate-50 font-sans">
+    <header class="mb-12 flex justify-between items-center">
+        <div><h1 class="text-4xl font-black italic text-[#6B8E23]">P!LOT Monitor</h1><p class="text-xs font-bold opacity-30 tracking-widest uppercase">Live Clinical Data Stream</p></div>
+        <div id="status" class="text-xs font-bold text-green-500 flex items-center gap-2">● Connected</div>
+    </header>
 
-    <div class="max-w-6xl mx-auto">
-        <header class="flex justify-between items-center mb-10">
-            <div>
-                <h1 class="text-3xl font-black text-[#6B8E23] italic">P!LOT Admin</h1>
-                <p id="debug-info" class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">系統連線檢查中...</p>
-            </div>
-            <div class="bg-white px-4 py-2 rounded-full shadow-sm text-xs font-bold text-green-600 border border-green-100">
-                ● 實時數據流已啟動
-            </div>
-        </header>
-
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-            <div class="stat-card">
-                <p class="text-[10px] font-black opacity-30 uppercase">總監控人數</p>
-                <p id="total-count" class="text-4xl font-black">0</p>
-            </div>
-            <div class="stat-card">
-                <p class="text-[10px] font-black text-red-400 uppercase">高風險預警</p>
-                <p id="risk-count" class="text-4xl font-black text-red-500">0</p>
-            </div>
-            <div class="stat-card">
-                <p class="text-[10px] font-black text-blue-400 uppercase">平均累積獎勵</p>
-                <p id="avg-reward" class="text-4xl font-black text-blue-600">0</p>
-            </div>
-        </div>
-
-        <div id="monitorGrid" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="col-span-full text-center py-20 text-slate-300 italic">
-                正在等待學生傳送數據...<br>
-                (請確保學生端已登入並發送訊息)
-            </div>
-        </div>
-    </div>
+    <div id="monitorGrid" class="grid grid-cols-1 md:grid-cols-3 gap-8"></div>
 
     <script>
-        // ⚠️ 請務必在此填入與學生端【完全相同】的 Config
-        const firebaseConfig = {apiKey: "AIzaSyCYXhTT_MzhE6K2OE6HuAx9kwEZlIKbZMg",
-            authDomain: "eamsc-929aa.firebaseapp.com",
-            projectId: "eamsc-929aa",
-            storageBucket: "eamsc-929aa.firebasestorage.app",
-            messagingSenderId: "1010678005753",
-            appId: "1:1010678005753:web:6283391cec141c7e664728",
-            measurementId: "G-TQ48PSK5H4"
-            
-        };
-
-        // 初始化 Firebase
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-        }
+        const firebaseConfig = { /* SAME AS ABOVE */ };
+        firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // --- 核心監聽邏輯 ---
-        function listenToStudents() {
-            // 注意：這裡的 "monitor_center" 必須與學生端寫入的集合名稱一模一樣
-            db.collection("monitor_center").orderBy("timestamp", "desc").onSnapshot((snapshot) => {
-                const grid = document.getElementById('monitorGrid');
-                grid.innerHTML = "";
-                
-                let total = 0;
-                let risk = 0;
-                let totalReward = 0;
+        // Audio alert for high risk
+        const alertSound = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
 
-                if (snapshot.empty) {
-                    document.getElementById('debug-info').innerText = "連線成功：資料庫目前是空的";
-                    return;
-                }
+        db.collection("monitor_center").orderBy("timestamp", "desc").onSnapshot(snapshot => {
+            const grid = document.getElementById('monitorGrid');
+            grid.innerHTML = "";
+            let riskDetected = false;
 
-                snapshot.forEach((doc) => {
-                    total++;
-                    const data = doc.data();
-                    const anxiety = parseFloat(data.anxiety_reduction || 0);
-                    const reward = parseFloat(data.cumulative_reward || 0);
-                    totalReward += reward;
+            snapshot.forEach(doc => {
+                const d = doc.data();
+                const anxiety = parseFloat(d.anxiety_reduction);
+                const isRisk = anxiety > 5;
+                if(isRisk) riskDetected = true;
 
-                    // 判斷高風險 (焦慮值 > 5)
-                    const isHighRisk = anxiety > 5;
-                    if (isHighRisk) risk++;
-
-                    const time = data.timestamp ? new Date(data.timestamp.seconds * 1000).toLocaleTimeString() : "同步中";
-
-                    const card = `
-                        <div class="bg-white p-6 rounded-[2rem] shadow-sm student-card ${isHighRisk ? 'risk-high' : ''}">
-                            <div class="flex items-center gap-4 mb-4">
-                                <img src="${data.userAvatar || 'https://via.placeholder.com/50'}" class="w-12 h-12 rounded-full border-2 border-white shadow-sm">
-                                <div class="flex-1">
-                                    <h3 class="font-black text-slate-700">${data.userName || '匿名學生'}</h3>
-                                    <p class="text-[10px] opacity-40 uppercase font-bold tracking-widest">${time}</p>
-                                </div>
-                                ${isHighRisk ? '<span class="bg-red-500 text-white text-[9px] px-2 py-1 rounded-full animate-pulse font-bold">❗ HIGH RISK</span>' : ''}
-                            </div>
-                            
-                            <div class="grid grid-cols-2 gap-3 mb-4">
-                                <div class="bg-slate-50 p-3 rounded-2xl">
-                                    <p class="text-[9px] font-black opacity-30 uppercase">焦慮減緩率</p>
-                                    <p class="text-xl font-black ${anxiety > 5 ? 'text-red-500' : 'text-blue-600'}">${anxiety.toFixed(1)}%</p>
-                                </div>
-                                <div class="bg-slate-50 p-3 rounded-2xl">
-                                    <p class="text-[9px] font-black opacity-30 uppercase">累積獎勵</p>
-                                    <p class="text-xl font-black text-[#6B8E23]">${reward.toFixed(0)}</p>
-                                </div>
-                            </div>
-
-                            <div class="p-4 bg-[#F9F8F6] rounded-2xl border border-slate-100">
-                                <p class="text-[9px] font-black opacity-40 uppercase mb-1">最後訊息摘要</p>
-                                <p class="text-xs text-slate-500 italic line-clamp-2">"${data.last_msg || '無對話內容'}"</p>
-                            </div>
+                grid.innerHTML += `
+                    <div class="p-8 rounded-[2.5rem] shadow-sm bg-white transition-all ${isRisk ? 'risk-card' : 'border-l-8 border-green-500'}">
+                        <div class="flex items-center gap-4 mb-6">
+                            <img src="${d.userAvatar}" class="w-12 h-12 rounded-full border">
+                            <div><h3 class="font-bold text-slate-800">${d.userName}</h3><p class="text-[9px] opacity-30">${d.msg_type} Update</p></div>
                         </div>
-                    `;
-                    grid.innerHTML += card;
-                });
-
-                // 更新頂部數據
-                document.getElementById('total-count').innerText = total;
-                document.getElementById('risk-count').innerText = risk;
-                document.getElementById('avg-reward').innerText = (totalReward / (total || 1)).toFixed(0);
-                document.getElementById('debug-info').innerText = `最後更新：${new Date().toLocaleTimeString()}`;
-
-            }, (error) => {
-                // 🔴 如果權限有問題，這裡會報錯
-                console.error("Firestore Error:", error);
-                document.getElementById('debug-info').innerText = "錯誤：" + error.message;
-                document.getElementById('debug-info').classList.add('text-red-500');
+                        <div class="grid grid-cols-2 gap-4 mb-6">
+                            <div class="bg-slate-50 p-4 rounded-2xl text-center"><p class="text-[9px] opacity-40">ANXIETY</p><p class="text-2xl font-black ${isRisk?'text-red-600':'text-blue-600'}">${anxiety}%</p></div>
+                            <div class="bg-slate-50 p-4 rounded-2xl text-center"><p class="text-[9px] opacity-40">REWARD</p><p class="text-2xl font-black text-[#6B8E23]">${d.cumulative_reward}</p></div>
+                        </div>
+                        <p class="text-xs italic text-slate-500 line-clamp-2">"${d.last_msg}"</p>
+                        ${isRisk ? '<p class="mt-4 text-[10px] font-black text-red-500 text-center animate-bounce uppercase">⚠️ Alert: High Stress Detected</p>' : ''}
+                    </div>`;
             });
-        }
 
-        listenToStudents();
+            if(riskDetected) alertSound.play().catch(e => console.log("Audio play blocked until interaction"));
+        });
     </script>
 </body>
 </html>
+
+           
