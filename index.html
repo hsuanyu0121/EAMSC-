@@ -161,10 +161,14 @@
                 // 核心同步：將數據推播至管理員後台 (admin.html)
                 syncToAdmin(msg);
 
-            } catch (e) {
-                appendBubble("抱歉，我現在連線有些問題，但我會一直陪著你的。", 'ai');
-            }
-        }
+                } catch (e) {
+                   console.error("詳細錯誤資訊:", e);
+                   appendBubble("錯誤原因：" + e.message, 'ai');
+}
+
+               // appendBubble("抱歉，我現在連線有些問題，但我會一直陪著你的。", 'ai');
+           // }
+       // }
 
         function appendBubble(text, role) {
             const win = document.getElementById('chatWindow');
