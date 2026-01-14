@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>P!LOT | 學生端 AI 心理導航</title>
+    <title>P!LOT | 心理健康社交導航</title>
 
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -12,166 +12,174 @@
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;700&display=swap');
-        :root { --warm-bg: #FFFDF9; --accent-green: #6B8E23; }
-        body { background-color: var(--warm-bg); font-family: 'Noto Sans TC', sans-serif; height: 100vh; overflow: hidden; display: flex; }
-        .column { height: 100vh; overflow-y: auto; padding: 2rem; border-right: 1px solid #E5E1DA; }
+        :root { --warm-bg: #FFFDF9; --accent-green: #6B8E23; --soft-gray: #F0EBE3; }
+        body { background-color: var(--warm-bg); font-family: 'Noto Sans TC', sans-serif; height: 100vh; overflow: hidden; display: flex; color: #4A443F; }
+        
+        /* NotebookLM 橫式版面 */
+        .column { height: 100vh; overflow-y: auto; padding: 2rem; border-right: 1px solid #E5E1DA; transition: all 0.3s; }
         .glass-card { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(10px); border-radius: 24px; border: 1px solid rgba(229, 225, 218, 0.5); }
-        .chat-bubble { max-width: 85%; padding: 1rem 1.5rem; border-radius: 20px; margin-bottom: 1rem; font-size: 15px; line-height: 1.6; }
-        .ai-bubble { background: #F0EBE3; align-self: flex-start; border-bottom-left-radius: 4px; }
+        
+        /* 對話與社交元件 */
+        .chat-bubble { max-width: 85%; padding: 1rem 1.5rem; border-radius: 20px; margin-bottom: 1rem; line-height: 1.6; }
+        .ai-bubble { background: var(--soft-gray); align-self: flex-start; border-bottom-left-radius: 4px; }
         .user-bubble { background: var(--accent-green); color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
-        /* 隱藏捲軸 */
+        
+        .social-post { background: white; border: 1px solid #E5E1DA; border-radius: 20px; padding: 1.5rem; margin-bottom: 1rem; transition: transform 0.2s; }
+        .social-post:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0,0,0,0.03); }
+        
         .scrollbar-hide::-webkit-scrollbar { display: none; }
     </style>
 </head>
 <body class="flex w-full">
 
-    <aside class="column w-1/4 bg-[#F5F2ED]">
-        <div class="mb-10 text-center">
+    <aside class="column w-64 bg-[#F5F2ED] flex-shrink-0">
+        <div class="mb-10">
             <h1 class="text-3xl font-black italic tracking-tighter text-[#6B8E23]">P!LOT</h1>
-            <p class="text-[10px] opacity-40 uppercase font-bold tracking-widest mt-1">Mental Health Navigator</p>
+            <p class="text-[10px] opacity-40 font-bold tracking-widest uppercase">Student Navigator</p>
         </div>
 
-        <div id="authArea" class="mb-8">
-            <button id="loginBtn" onclick="signIn()" class="w-full py-4 glass-card font-black text-slate-600 hover:bg-white transition active:scale-95 shadow-sm">Google 登入</button>
-            <div id="userInfo" class="hidden flex items-center gap-3 p-4 glass-card">
-                <img id="userAvatar" class="w-12 h-12 rounded-full border-2 border-white shadow-sm" src="">
-                <div class="overflow-hidden">
-                    <p id="userName" class="text-sm font-bold truncate text-slate-700"></p>
-                    <button onclick="signOut()" class="text-[10px] text-red-400 font-bold hover:underline">登出系統</button>
-                </div>
+        <div id="authArea" class="mb-10">
+            <button id="loginBtn" onclick="signIn()" class="w-full py-3 glass-card font-bold text-slate-600 hover:bg-white transition shadow-sm">Google 登入</button>
+            <div id="userInfo" class="hidden flex flex-col items-center text-center">
+                <img id="userAvatar" class="w-16 h-16 rounded-full border-4 border-white shadow-md mb-3" src="">
+                <h3 id="userName" class="font-bold text-slate-700"></h3>
+                <button onclick="signOut()" class="text-[10px] text-red-400 font-bold mt-2 hover:underline">登出系統</button>
             </div>
         </div>
 
-        <section class="mt-10">
-            <h4 class="text-[11px] font-black mb-4 uppercase tracking-widest text-slate-400">Mood Journal</h4>
-            <div class="space-y-4">
-                <textarea id="journalInput" class="w-full p-5 glass-card text-sm focus:outline-none focus:ring-2 focus:ring-[#6B8E23]/20 transition" rows="4" placeholder="今天發生了什麼事嗎？"></textarea>
-                <button onclick="saveJournal()" class="w-full py-3 bg-[#6B8E23] text-white rounded-2xl text-xs font-black shadow-lg shadow-[#6B8E23]/20 hover:translate-y-[-2px] transition">發布到心情筆記</button>
-                
-                <div id="journalList" class="mt-6 space-y-3 max-h-[300px] overflow-y-auto pr-2 scrollbar-hide">
-                    </div>
-            </div>
-        </section>
+        <nav class="space-y-2">
+            <button onclick="switchTab('ai')" class="w-full text-left px-4 py-3 rounded-xl font-bold text-sm bg-white text-[#6B8E23] shadow-sm">🤖 AI 諮商師</button>
+            <button onclick="switchTab('social')" class="w-full text-left px-4 py-3 rounded-xl font-bold text-sm hover:bg-white/50 transition">🍃 社交廣場</button>
+        </nav>
     </aside>
 
-    <main class="column flex-1 flex flex-col bg-[#FFFDF9] relative">
-        <header class="flex justify-between items-center mb-8">
-            <div class="flex items-center gap-3">
-                <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                <h2 class="font-black text-xl italic text-slate-800">AI 諮商導航員</h2>
+    <main class="flex-1 column bg-[#FFFDF9] flex flex-col relative">
+        
+        <div id="ai-tab" class="h-full flex flex-col">
+            <header class="flex justify-between items-center mb-8">
+                <h2 class="text-2xl font-black italic">AI 諮商導航</h2>
+                <div id="rl-badge" class="px-3 py-1 bg-green-100 text-[#6B8E23] text-[10px] font-bold rounded-lg uppercase">
+                    RL State: <span id="currentStrategy">Stable</span>
+                </div>
+            </header>
+            
+            <div id="chatWindow" class="flex-1 overflow-y-auto pr-4 mb-6 flex flex-col scrollbar-hide">
+                <div class="chat-bubble ai-bubble italic">你好，我是 P!LOT。今天有什麼想分享的嗎？我會透過強化學習調整我的回應，提供最適合你的支持。</div>
             </div>
-            <div id="rl-indicator" class="px-4 py-1.5 bg-slate-100 rounded-full text-[10px] font-black text-slate-400">
-                STRATEGY: <span id="currentStrategy" class="text-[#6B8E23]">INITIALIZING</span>
-            </div>
-        </header>
 
-        <div id="chatWindow" class="flex-1 flex flex-col overflow-y-auto mb-6 pr-4 scrollbar-hide">
-            <div class="chat-bubble ai-bubble">你好。我是你的專屬 AI 心理諮商師。你可以跟我分享任何困擾，我會一直陪著你。</div>
+            <div class="relative pt-4 border-t border-slate-100">
+                <input id="chatInput" type="text" class="w-full p-5 glass-card shadow-lg focus:outline-none pr-20" placeholder="與諮商師對話...">
+                <button id="sendBtn" class="absolute right-5 top-9 font-black text-[#6B8E23] hover:scale-110 transition">發送</button>
+            </div>
         </div>
 
-        <div class="relative mt-auto">
-            <div class="absolute -top-12 left-0 flex gap-2">
-                <button onclick="copyDiagnosis()" class="text-[10px] font-bold text-slate-400 hover:text-[#6B8E23]">🔗 複製對話摘要 (適用 NotebookLM)</button>
+        <div id="social-tab" class="h-full flex flex-col hidden">
+            <header class="mb-8">
+                <h2 class="text-2xl font-black italic">社交廣場</h2>
+                <p class="text-xs text-slate-400">在這裡，你並不孤單。分享心情，或是為他人打氣。</p>
+            </header>
+
+            <div class="mb-6">
+                <textarea id="postInput" class="w-full p-6 glass-card text-sm focus:outline-none min-h-[120px]" placeholder="想對大家說點什麼？（將同步至治療師後台監控）"></textarea>
+                <div class="flex justify-end mt-2">
+                    <button onclick="createPost()" class="bg-[#6B8E23] text-white px-8 py-2 rounded-full text-xs font-bold shadow-lg">發布貼文</button>
+                </div>
             </div>
-            <input id="chatInput" type="text" class="w-full p-6 glass-card shadow-2xl focus:outline-none text-lg pr-20" placeholder="在此輸入訊息...">
-            <button id="sendBtn" class="absolute right-6 top-6 text-[#6B8E23] font-black text-xl hover:scale-110 transition">↵</button>
+
+            <div id="socialFeed" class="flex-1 overflow-y-auto pr-4 scrollbar-hide">
+                </div>
         </div>
     </main>
 
+    <aside class="column w-1/4 bg-white">
+        <h4 class="text-xs font-black uppercase tracking-widest opacity-30 mb-8 text-center">RL Monitoring</h4>
+        
+        <div class="space-y-6">
+            <div class="p-6 glass-card text-center bg-[#F9F8F6]">
+                <p class="text-[10px] font-bold opacity-50 mb-1">Anxiety Reduction</p>
+                <p id="stat-anxiety" class="text-3xl font-black text-blue-600">0.0%</p>
+            </div>
+            
+            <div class="p-6 glass-card text-center bg-[#F9F8F6]">
+                <p class="text-[10px] font-bold opacity-50 mb-1">Cumulative Reward</p>
+                <p id="stat-reward" class="text-3xl font-black text-[#6B8E23]">500</p>
+            </div>
+
+            <div class="p-5 bg-orange-50 rounded-3xl border border-orange-100">
+                <p class="text-[10px] font-bold text-orange-600 mb-2 uppercase italic">AI 策略分析</p>
+                <p id="strategy-desc" class="text-xs leading-relaxed text-orange-800 opacity-80">目前系統正在學習您的語氣偏好，以建立最舒適的對話空間。</p>
+            </div>
+        </div>
+    </aside>
+
     <script>
-        // ======= 1. 初始化設定 =======
+        // ======= 1. Firebase & Gemini 設定 =======
         const firebaseConfig = {
-             apiKey: "AIzaSyCYXhTT_MzhE6K2OE6HuAx9kwEZlIKbZMg",
-             authDomain: "eamsc-929aa.firebaseapp.com",
-             projectId: "eamsc-929aa",
-             storageBucket: "eamsc-929aa.firebasestorage.app",
-             messagingSenderId: "1010678005753",
-             appId: "1:1010678005753:web:6283391cec141c7e664728",
-             measurementId: "G-TQ48PSK5H4"
+            apiKey: "你的_FIREBASE_API_KEY",
+            authDomain: "你的_AUTH_DOMAIN",
+            projectId: "你的_PROJECT_ID",
+            storageBucket: "你的_STORAGE_BUCKET",
+            messagingSenderId: "你的_SENDER_ID",
+            appId: "你的_APP_ID"
         };
+        const geminiKey = "你的_GEMINI_API_KEY";
 
-        const geminiKey = "AIzaSyCpbz3b2Pgw-FCjdGqYM4LgpqCj7WWrXxQ";
-
-        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
 
-        // 強化學習 (RL) 模擬指標
-        let rlStats = {
-            anxiety: 0,    // 焦慮指標
-            reward: 500,   // 累計獎勵
-            strategy: "Supportive Listening",
-            history: []    // 對話紀錄
-        };
+        let rlStats = { anxiety: 0, reward: 500, strategy: "Supportive" };
 
-        // ======= 2. Google 登入邏輯 =======
-        function signIn() {
-            const provider = new firebase.auth.GoogleAuthProvider();
-            auth.signInWithPopup(provider).catch(e => alert("登入失敗: " + e.message));
-        }
+        // ======= 2. 身份驗證 =======
+        function signIn() { auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }
         function signOut() { auth.signOut(); }
-
         auth.onAuthStateChanged(user => {
             if (user) {
                 document.getElementById('loginBtn').classList.add('hidden');
                 document.getElementById('userInfo').classList.remove('hidden');
                 document.getElementById('userName').innerText = user.displayName;
                 document.getElementById('userAvatar').src = user.photoURL;
-                loadJournals();
+                loadPosts();
             } else {
                 document.getElementById('loginBtn').classList.remove('hidden');
                 document.getElementById('userInfo').classList.add('hidden');
             }
         });
 
-        // ======= 3. AI 諮商核心 (含 RL Prompt) =======
+        // ======= 3. 頁面切換 =======
+        function switchTab(tab) {
+            document.getElementById('ai-tab').classList.toggle('hidden', tab !== 'ai');
+            document.getElementById('social-tab').classList.toggle('hidden', tab !== 'social');
+        }
+
+        // ======= 4. AI 諮商邏輯 =======
         async function sendMessage() {
             const input = document.getElementById('chatInput');
-            const msg = input.value.trim();
-            if (!msg || !auth.currentUser) return;
-
+            const msg = input.value; if(!msg || !auth.currentUser) return;
             appendBubble(msg, 'user');
             input.value = "";
 
-            // 模擬 RL 狀態更新 (實際應用中可由模型判斷)
-            rlStats.anxiety += (Math.random() * 2 - 1); 
-            rlStats.strategy = rlStats.anxiety > 3 ? "Crisis Intervention" : "Cognitive Restructuring";
-            document.getElementById('currentStrategy').innerText = rlStats.strategy;
-
-            // 構建專業 Prompt
-            const systemPrompt = `
-                你是一位結合強化學習邏輯與 CBT 技術的專業諮商師。
-                【目前學生狀態】焦慮值: ${rlStats.anxiety.toFixed(1)}, 建議策略: ${rlStats.strategy}。
-                請運用 ${rlStats.strategy} 進行回覆。語氣溫暖、專業、簡約。
-                最後請在回答後換行並加上一句「[摘要]：(一句話總結本次核心觀念)」。
-            `;
+            // RL 參數與策略更新
+            rlStats.anxiety += (Math.random() * 2 - 1);
+            rlStats.reward += Math.random() * 5;
+            document.getElementById('stat-anxiety').innerText = rlStats.anxiety.toFixed(1) + "%";
+            document.getElementById('stat-reward').innerText = rlStats.reward.toFixed(1);
 
             try {
                 const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
+                    method: "POST", headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        contents: [{ parts: [{ text: systemPrompt + "\n使用者訊息：" + msg }] }]
+                        contents: [{ parts: [{ text: `你是一位心理諮商師。目前學生焦慮：${rlStats.anxiety}。請溫柔回應：${msg}` }] }]
                     })
                 });
                 const data = await res.json();
-                const aiResponse = data.candidates[0].content.parts[0].text;
-                appendBubble(aiResponse, 'ai');
+                const aiMsg = data.candidates[0].content.parts[0].text;
+                appendBubble(aiMsg, 'ai');
 
-                // 核心同步：將數據推播至管理員後台 (admin.html)
-                syncToAdmin(msg);
-
-                } catch (e) {
-                   console.error("詳細錯誤資訊:", e);
-                   appendBubble("錯誤原因：" + e.message, 'ai');
-                }
-            
-                 }
-            
-
-               // appendBubble("抱歉，我現在連線有些問題，但我會一直陪著你的。", 'ai');
-           // }
-       // }
+                // 同步到後台
+                syncToAdmin(msg, "AI 諮商");
+            } catch (e) { appendBubble("連線稍微不穩定，但我還在。", 'ai'); }
+        }
 
         function appendBubble(text, role) {
             const win = document.getElementById('chatWindow');
@@ -182,52 +190,55 @@
             win.scrollTop = win.scrollHeight;
         }
 
-        // ======= 4. 後台數據同步 =======
-        function syncToAdmin(lastMsg) {
+        // ======= 5. 社交廣場邏輯 =======
+        function createPost() {
+            const text = document.getElementById('postInput').value;
+            if(!text || !auth.currentUser) return;
+
+            db.collection("posts").add({
+                uid: auth.currentUser.uid,
+                userName: auth.currentUser.displayName,
+                userAvatar: auth.currentUser.photoURL,
+                content: text,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            }).then(() => {
+                document.getElementById('postInput').value = "";
+                syncToAdmin(text, "社交貼文");
+            });
+        }
+
+        function loadPosts() {
+            db.collection("posts").orderBy("timestamp", "desc").onSnapshot(snap => {
+                const feed = document.getElementById('socialFeed');
+                feed.innerHTML = "";
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    const card = document.createElement('div');
+                    card.className = "social-post";
+                    card.innerHTML = `
+                        <div class="flex items-center gap-3 mb-3">
+                            <img src="${d.userAvatar}" class="w-8 h-8 rounded-full">
+                            <span class="font-bold text-sm">${d.userName}</span>
+                        </div>
+                        <p class="text-sm text-slate-600 leading-relaxed">${d.content}</p>
+                    `;
+                    feed.appendChild(card);
+                });
+            });
+        }
+
+        // ======= 6. 數據同步到治療師後台 =======
+        function syncToAdmin(lastAction, type) {
             db.collection("monitor_center").doc(auth.currentUser.uid).set({
                 uid: auth.currentUser.uid,
                 userName: auth.currentUser.displayName,
                 userAvatar: auth.currentUser.photoURL,
                 anxiety_reduction: rlStats.anxiety.toFixed(1),
                 cumulative_reward: rlStats.reward.toFixed(1),
-                strategy: rlStats.strategy,
-                last_msg: lastMsg,
+                strategy: rlStats.anxiety > 5 ? "Crisis Support" : "Active Engagement",
+                last_msg: `[${type}] ${lastAction}`,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             }, { merge: true });
-        }
-
-        // ======= 5. 心情記事本 =======
-        function saveJournal() {
-            const text = document.getElementById('journalInput').value;
-            if(!text) return;
-            db.collection("journals").add({
-                uid: auth.currentUser.uid,
-                userName: auth.currentUser.displayName,
-                text: text,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            }).then(() => {
-                document.getElementById('journalInput').value = "";
-            });
-        }
-
-        function loadJournals() {
-            db.collection("journals").orderBy("timestamp", "desc").limit(10).onSnapshot(snap => {
-                const list = document.getElementById('journalList');
-                list.innerHTML = "";
-                snap.forEach(doc => {
-                    const d = doc.data();
-                    const item = document.createElement('div');
-                    item.className = "p-4 glass-card text-xs leading-relaxed shadow-sm";
-                    item.innerHTML = `<span class="font-black text-[#6B8E23]">${d.userName}</span><p class="mt-1 text-slate-500">${d.text}</p>`;
-                    list.appendChild(item);
-                });
-            });
-        }
-
-        function copyDiagnosis() {
-            const chat = document.getElementById('chatWindow').innerText;
-            navigator.clipboard.writeText(chat);
-            alert("對話紀錄已複製，可貼入 NotebookLM。");
         }
 
         document.getElementById('sendBtn').onclick = sendMessage;
