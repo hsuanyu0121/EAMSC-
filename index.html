@@ -145,12 +145,13 @@
         };
 
         const firebaseConfig = {
-            apiKey: "你的_API_KEY",
-            authDomain: "你的_AUTH_DOMAIN",
-            projectId: "你的_PROJECT_ID",
-            storageBucket: "你的_STORAGE_BUCKET",
-            messagingSenderId: "你的_SENDER_ID",
-            appId: "你的_APP_ID"
+            apiKey: "AIzaSyCYXhTT_MzhE6K2OE6HuAx9kwEZlIKbZMg",
+            authDomain: "eamsc-929aa.firebaseapp.com",
+            projectId: "eamsc-929aa",
+            storageBucket: "eamsc-929aa.firebasestorage.app",
+            messagingSenderId: "1010678005753",
+            appId: "1:1010678005753:web:6283391cec141c7e664728",
+            measurementId: "G-TQ48PSK5H4"
         };
 
         firebase.initializeApp(firebaseConfig);
@@ -206,7 +207,30 @@
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        contents: [{ parts: [{ text: `你是一位專業心理諮商師。目前系統參數：焦慮降低率 ${rlStats.anxiety}%。請以此狀態提供溫暖且專業的建議：${msg}` }] }]
+                        contents: [{ parts: [{ text: `你是一位專業心理諮商師。# Role
+你是一位融合了「強化學習（RL）個人化邏輯」與「認知行為療法（CBT）」的專業 AI 心理諮商導航員。你的目標是透過動態調整介入策略（Intervention Strategy），最大化使用者的累積獎勵（Cumulative Reward），即：降低使用者的焦慮（Anxiety）與抑鬱（Depression）分數。
+
+# Deep Learning & RL Framework
+在對話中，請將每一輪交流視為一次「狀態轉換（State Transition）」：
+1. 【輸入狀態 (State)】：分析使用者的情緒效價、語言風格、目前的焦慮指標。
+2. 【動作選擇 (Action/Strategy)】：根據指標，從以下策略中選擇最合適的一項：
+   - Supportive Listening (同理傾聽)
+   - Cognitive Restructuring (認知重組)
+   - Motivational Interviewing (動機式訪談)
+   - Crisis Intervention (危機干預)
+3. 【獎勵評估 (Reward)】：評估你的回應是否能誘導使用者產生正向的情緒波動。
+
+# Response Guidelines
+- 語氣：溫暖、簡約（仿 NotebookLM 質感）、具備高專業度。
+- 邏輯：不只是安撫，要根據指標提供具備診斷價值的回應。
+- 個人化：如果使用者的「焦慮減緩率（Anxiety Reduction）」數據不佳，請立即切換更具主導性的介入策略。
+
+# Output Format (請嚴格遵守)
+每輪回應請包含：
+1. 【策略選擇】：標註你此輪使用的心理學介入技術。
+2. 【導航回應】：正式對使用者說的話。
+3. 【系統回報】：(僅限後台/開發者查看模式) 指出目前的參數狀態（焦慮降幅預測值、累積獎勵估計）。
+目前系統參數：焦慮降低率 ${rlStats.anxiety}%。請以此狀態提供溫暖且專業的建議：${msg}` }] }]
                     })
                 });
                 const data = await res.json();
@@ -228,6 +252,21 @@
             win.appendChild(div);
             win.scrollTop = win.scrollHeight;
         }
+        // 在 appendBubble(aiText, 'ai') 之後加入
+    if (auth.currentUser) {
+    db.collection("monitor_center").doc(auth.currentUser.uid).set({
+        uid: auth.currentUser.uid,
+        userName: auth.currentUser.displayName,
+        userAvatar: auth.currentUser.photoURL,
+        anxiety_reduction: rlStats.anxiety,    // 焦慮減緩率
+        depression_reduction: rlStats.depression, // 抑鬱減緩率
+        cumulative_reward: rlStats.reward,     // 累積獎勵
+        epochs: rlStats.epochs,               // 收斂週期
+        strategy: rlStats.strategy,           // 目前 AI 使用策略
+        last_msg: msg,                        // 最後一句話 (監控預覽)
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+    }
 
         // 4. 心情記事本功能 (Firestore)
         function saveJournal() {
@@ -288,3 +327,4 @@
     </script>
 </body>
 </html>
+ 
