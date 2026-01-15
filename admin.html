@@ -7,62 +7,46 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .risk-card { border-left: 10px solid #EF4444; background: #FFF1F1; animation: pulse-bg 2s infinite; }
-        @keyframes pulse-bg { 0% { background: #FFF1F1; } 50% { background: #FFE4E4; } 100% { background: #FFF1F1; } }
+        body { background-color: #0F172A; color: white; font-family: sans-serif; }
+        .risk-card { border: 2px solid #EF4444; background: rgba(239, 68, 68, 0.1); animation: flash 2s infinite; }
+        @keyframes flash { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
     </style>
 </head>
-<body class="p-10 bg-slate-50 font-sans">
-    <header class="mb-12 flex justify-between items-center">
-        <div><h1 class="text-4xl font-black italic text-[#6B8E23]">P!LOT Monitor</h1><p class="text-xs font-bold opacity-30 tracking-widest uppercase">Live Clinical Data Stream</p></div>
-        <div id="status" class="text-xs font-bold text-green-500 flex items-center gap-2">● Connected</div>
-    </header>
-
-    <div id="monitorGrid" class="grid grid-cols-1 md:grid-cols-3 gap-8"></div>
+<body class="p-10">
+    <div class="flex justify-between items-center mb-10">
+        <h1 class="text-3xl font-black italic text-[#A4C639]">P!LOT Monitor</h1>
+        <div class="text-xs font-bold text-green-500">● Live Feed Active</div>
+    </div>
+    <div id="monitorGrid" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
 
     <script>
-        const firebaseConfig = { apiKey: "AIzaSyCYXhTT_MzhE6K2OE6HuAx9kwEZlIKbZMg",
-           authDomain: "eamsc-929aa.firebaseapp.com",
-           projectId: "eamsc-929aa",
-           storageBucket: "eamsc-929aa.firebasestorage.app",
-           messagingSenderId: "1010678005753",
-           appId: "1:1010678005753:web:6283391cec141c7e664728",
-           measurementId: "G-TQ48PSK5H4" };
+        const firebaseConfig = { /* 同學生端 */ };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
-
-        // Audio alert for high risk
         const alertSound = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
 
-        db.collection("monitor_center").orderBy("timestamp", "desc").onSnapshot(snapshot => {
+        db.collection("monitor_center").orderBy("timestamp", "desc").onSnapshot(snap => {
             const grid = document.getElementById('monitorGrid');
             grid.innerHTML = "";
-            let riskDetected = false;
-
-            snapshot.forEach(doc => {
+            snap.forEach(doc => {
                 const d = doc.data();
-                const anxiety = parseFloat(d.anxiety_reduction);
-                const isRisk = anxiety > 5;
-                if(isRisk) riskDetected = true;
+                const isRisk = d.anxiety > 7 || d.stress > 7;
+                if(isRisk) alertSound.play().catch(()=>{});
 
                 grid.innerHTML += `
-                    <div class="p-8 rounded-[2.5rem] shadow-sm bg-white transition-all ${isRisk ? 'risk-card' : 'border-l-8 border-green-500'}">
-                        <div class="flex items-center gap-4 mb-6">
-                            <img src="${d.userAvatar}" class="w-12 h-12 rounded-full border">
-                            <div><h3 class="font-bold text-slate-800">${d.userName}</h3><p class="text-[9px] opacity-30">${d.msg_type} Update</p></div>
+                    <div class="p-6 rounded-[2rem] bg-slate-800 border border-slate-700 ${isRisk ? 'risk-card' : ''}">
+                        <div class="flex items-center gap-3 mb-6">
+                            <img src="${d.avatar}" class="w-12 h-12 rounded-full border-2 border-[#A4C639]">
+                            <div><h3 class="font-bold">${d.name}</h3><p class="text-[9px] text-slate-400">${d.type} Update</p></div>
                         </div>
-                        <div class="grid grid-cols-2 gap-4 mb-6">
-                            <div class="bg-slate-50 p-4 rounded-2xl text-center"><p class="text-[9px] opacity-40">ANXIETY</p><p class="text-2xl font-black ${isRisk?'text-red-600':'text-blue-600'}">${anxiety}%</p></div>
-                            <div class="bg-slate-50 p-4 rounded-2xl text-center"><p class="text-[9px] opacity-40">REWARD</p><p class="text-2xl font-black text-[#6B8E23]">${d.cumulative_reward}</p></div>
+                        <div class="grid grid-cols-2 gap-4 text-center text-[10px] font-bold mb-6">
+                            <div class="bg-slate-900 p-2 rounded-xl"><p class="opacity-40">ANXIETY</p><p class="${d.anxiety>7?'text-red-500':''}">${d.anxiety}/10</p></div>
+                            <div class="bg-slate-900 p-2 rounded-xl"><p class="opacity-40">STRESS</p><p class="${d.stress>7?'text-red-500':''}">${d.stress}/10</p></div>
                         </div>
-                        <p class="text-xs italic text-slate-500 line-clamp-2">"${d.last_msg}"</p>
-                        ${isRisk ? '<p class="mt-4 text-[10px] font-black text-red-500 text-center animate-bounce uppercase">⚠️ Alert: High Stress Detected</p>' : ''}
+                        <div class="p-4 bg-black/30 rounded-2xl border border-white/5 text-xs italic text-slate-400 truncate">"${d.last_msg}"</div>
                     </div>`;
             });
-
-            if(riskDetected) alertSound.play().catch(e => console.log("Audio play blocked until interaction"));
         });
     </script>
 </body>
 </html>
-
-           
