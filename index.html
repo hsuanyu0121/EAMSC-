@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>P!LOT | Navigator</title>
+    <title>P!LOT | Navigator Elite</title>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
@@ -13,35 +13,43 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
         body { font-family: 'Inter', sans-serif; background-color: #FDFCFB; color: #4A443F; }
-        .glass-card { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); border-radius: 2rem; border: 1px solid rgba(0,0,0,0.05); }
-        .chat-bubble { max-width: 80%; padding: 1.25rem; border-radius: 1.5rem; margin-bottom: 1rem; font-size: 14px; }
+        .glass-card { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); border-radius: 2rem; border: 1px solid rgba(107, 142, 35, 0.05); }
+        .chat-bubble { max-width: 80%; padding: 1.25rem; border-radius: 1.5rem; margin-bottom: 1rem; font-size: 14px; line-height: 1.6; }
         .ai-bubble { background: #F0EBE3; align-self: flex-start; border-bottom-left-radius: 4px; }
         .user-bubble { background: #6B8E23; color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
-        .achievement-badge { background: linear-gradient(135deg, #A4C639 0%, #6B8E23 100%); color: white; padding: 10px 20px; border-radius: 15px; font-size: 12px; font-weight: 800; box-shadow: 0 4px 15px rgba(107, 142, 35, 0.2); }
+        .achievement-badge { background: linear-gradient(135deg, #A4C639 0%, #6B8E23 100%); color: white; padding: 12px; border-radius: 18px; font-size: 11px; font-weight: 700; box-shadow: 0 4px 12px rgba(107, 142, 35, 0.15); }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: #E5E1DA; border-radius: 10px; }
     </style>
 </head>
 <body class="flex h-screen overflow-hidden">
 
     <aside class="w-80 bg-[#F5F2ED] p-6 flex flex-col border-r border-slate-200">
-        <h1 class="text-4xl font-black italic text-[#6B8E23] mb-8 tracking-tighter">P!LOT</h1>
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-4xl font-black italic text-[#6B8E23] tracking-tighter">P!LOT</h1>
+            <button id="logoutBtn" onclick="signOut()" class="hidden text-slate-400 hover:text-red-500 transition" title="Sign Out">
+                <i class="fas fa-sign-out-alt text-lg"></i>
+            </button>
+        </div>
         
         <div id="authArea" class="mb-8">
-            <button onclick="signIn()" class="w-full py-3 bg-white rounded-2xl shadow-sm font-bold text-slate-600 hover:bg-slate-50 transition text-sm">Sign In to Save Progress</button>
-            <div id="userInfo" class="hidden flex items-center gap-3 p-3 glass-card bg-white/50">
-                <img id="userAvatar" class="w-10 h-10 rounded-full border-2 border-white" src="">
-                <span id="userName" class="text-sm font-bold truncate"></span>
-            </div>
+            <button onclick="signIn()" class="w-full py-3 bg-white rounded-2xl shadow-sm font-bold text-slate-600 hover:bg-slate-50 transition text-sm tracking-wide">Sign In with Google</button>
         </div>
 
-        <nav class="space-y-2 flex-1">
+        <div id="userInfo" class="hidden mb-8 flex items-center gap-3 p-3 glass-card bg-white/50">
+            <img id="userAvatar" class="w-10 h-10 rounded-full border-2 border-white shadow-sm" src="">
+            <span id="userName" class="text-sm font-black truncate text-slate-700"></span>
+        </div>
+
+        <nav class="space-y-2 flex-1 overflow-y-auto">
             <button onclick="switchTab('ai')" id="btn-ai" class="w-full text-left px-5 py-4 rounded-xl font-bold text-sm bg-white shadow-sm text-[#6B8E23]">🤖 AI Counseling</button>
             <button onclick="switchTab('social')" id="btn-social" class="w-full text-left px-5 py-4 rounded-xl font-bold text-sm text-slate-400 hover:bg-white/50 transition">🍃 Social Square</button>
             <button onclick="switchTab('milestones')" id="btn-milestones" class="w-full text-left px-5 py-4 rounded-xl font-bold text-sm text-slate-400 hover:bg-white/50 transition">🏆 Achievement Vault</button>
         </nav>
 
-        <div class="mt-4 p-5 bg-white rounded-3xl border border-slate-100 shadow-sm">
-            <p class="text-[10px] font-black text-[#6B8E23] uppercase mb-4 tracking-widest">Ongoing Mission</p>
-            <div id="activeTasks" class="space-y-3 text-xs font-bold">
+        <div class="mt-6 p-5 bg-white rounded-[2rem] border border-slate-100 shadow-sm">
+            <p class="text-[10px] font-black text-[#6B8E23] uppercase mb-4 tracking-widest">Active Missions</p>
+            <div id="activeTasks" class="space-y-2 text-xs font-bold">
                 </div>
         </div>
     </aside>
@@ -49,34 +57,49 @@
     <main class="flex-1 p-8 flex flex-col relative bg-white overflow-hidden">
         
         <div id="view-ai" class="h-full flex flex-col">
-            <div id="chatWindow" class="flex-1 overflow-y-auto flex flex-col pr-4"></div>
+            <div id="chatWindow" class="flex-1 overflow-y-auto flex flex-col pr-4">
+                <div class="chat-bubble ai-bubble font-bold text-[#6B8E23]">Hello. I'm P!LOT. Start by completing a mission on the left or just share how you feel.</div>
+            </div>
             <div class="flex gap-2 mt-4">
-                <input id="chatInput" type="text" class="flex-1 p-5 glass-card shadow-lg outline-none text-sm" placeholder="Talk to P!LOT..." onkeypress="if(event.keyCode==13) sendMessage()">
-                <button onclick="sendMessage()" class="px-8 bg-[#6B8E23] text-white rounded-full font-bold shadow-lg">Send</button>
+                <input id="chatInput" type="text" class="flex-1 p-5 glass-card shadow-lg outline-none text-sm" placeholder="Speak your mind..." onkeypress="if(event.keyCode==13) sendMessage()">
+                <button onclick="sendMessage()" class="px-10 bg-[#6B8E23] text-white rounded-full font-black shadow-lg hover:bg-[#55721C] transition">Send</button>
             </div>
         </div>
 
         <div id="view-social" class="h-full flex flex-col hidden">
             <h2 class="text-3xl font-black mb-6 italic">Social Square</h2>
-            <div class="glass-card p-6 mb-6 bg-slate-50/50">
-                <textarea id="postInput" class="w-full bg-transparent text-sm outline-none border-none resize-none" rows="2" placeholder="Post a supportive message..."></textarea>
-                <button onclick="createPost()" class="mt-2 float-right px-6 py-2 bg-[#6B8E23] text-white rounded-full font-bold text-xs shadow-md">Post</button>
+            <div class="glass-card p-6 mb-8 bg-slate-50/50">
+                <textarea id="postInput" class="w-full bg-transparent text-sm outline-none border-none resize-none" rows="2" placeholder="How are you supporting yourself today?"></textarea>
+                <button onclick="createPost()" class="mt-2 float-right px-8 py-2 bg-[#6B8E23] text-white rounded-full font-bold text-xs shadow-md active:scale-95 transition">Post Mood</button>
             </div>
-            <div id="socialFeed" class="flex-1 overflow-y-auto space-y-4 pr-2"></div>
+            <div id="socialFeed" class="flex-1 overflow-y-auto space-y-4"></div>
         </div>
 
         <div id="view-milestones" class="h-full flex flex-col hidden overflow-hidden">
-            <div class="mb-8">
-                <h2 class="text-3xl font-black italic">Achievement Vault</h2>
-                <p class="text-xs text-slate-400 font-bold mt-1 uppercase tracking-widest">History of your mental resilience</p>
+            <div class="flex justify-between items-end mb-8">
+                <div>
+                    <h2 class="text-3xl font-black italic">Achievement Vault</h2>
+                    <p class="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-widest italic">A permanent record of your bravery</p>
+                </div>
+                <button onclick="clearAchievements()" class="text-[10px] font-black text-red-400 hover:text-red-600 bg-red-50 px-4 py-2 rounded-full transition">
+                    <i class="fas fa-trash-alt mr-1"></i> Clear My Vault
+                </button>
             </div>
-            <div id="achievementList" class="flex-1 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-4 pb-10">
+            <div id="achievementList" class="flex-1 overflow-y-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-10">
                 </div>
         </div>
     </main>
 
+    <aside class="w-72 p-8 flex flex-col items-center bg-[#FDFCFB] border-l border-slate-100 shrink-0">
+        <h4 class="text-[10px] font-black opacity-30 uppercase tracking-[0.3em] mb-12">System Output</h4>
+        <div class="p-10 bg-white rounded-[3rem] text-center shadow-2xl border border-slate-50 w-full">
+            <p class="text-[10px] font-black text-blue-500 mb-1 uppercase tracking-widest">Energy Points</p>
+            <p id="stat-award" class="text-6xl font-black text-[#6B8E23]">500</p>
+        </div>
+    </aside>
+
     <script>
-        // ======= Config =======
+        // ======= [1] Firebase Creds (Your Key) =======
         const firebaseConfig = {
             apiKey: "AIzaSyCYXhTT_MzhE6K2OE6HuAx9kwEZlIKbZMg",
             authDomain: "eamsc-929aa.firebaseapp.com",
@@ -88,39 +111,58 @@
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore(), auth = firebase.auth();
-        const GEMINI_API_KEY = "您的_GEMINI_API_KEY_填於此";
+        const GEMINI_API_KEY = "YOUR_GEMINI_API_KEY_HERE"; // PASTE KEY HERE
 
         let mentalState = { anxiety: 3, stress: 3, depression: 2, loneliness: 2, award: 500 };
-        const missionPool = ["Drink warm tea", "15min walk", "Call a friend", "Write 3 gratitudes", "Tidy desk", "Deep breathing"];
+        
+        // ======= [2] Expanded Mission Pool (10+ Items) =======
+        const missionPool = [
+            "Drink a warm cup of tea slowly",
+            "Take a 15-minute nature walk",
+            "Call a friend for 5 minutes",
+            "Write down 3 things you're grateful for",
+            "Listen to your favorite song",
+            "Tidy up your workspace",
+            "Do 10 deep breathing cycles",
+            "Stretch your body for 5 minutes",
+            "Eat a piece of fresh fruit",
+            "Compliment yourself in the mirror",
+            "Unplug from social media for 1 hour",
+            "Write a supportive note to yourself"
+        ];
         let currentTasks = [];
 
-        // ======= Achievement System =======
+        // ======= [3] Core System Logic =======
         function setupMissions() {
             const shuffled = [...missionPool].sort(() => 0.5 - Math.random());
-            currentTasks = shuffled.slice(0, 2);
+            currentTasks = shuffled.slice(0, 3);
             renderActiveTasks();
         }
 
         function completeAction(taskText) {
-            // 1. 保存到 Firebase 成就庫
-            if(!auth.currentUser) return;
+            if(!auth.currentUser) return alert("Please log in to save achievements.");
             db.collection("users").doc(auth.currentUser.uid).collection("achievements").add({
                 task: taskText,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
-
-            // 2. 更新參數
             mentalState.award += 100;
             mentalState.stress = Math.max(0, mentalState.stress - 1);
+            document.getElementById('stat-award').innerText = mentalState.award;
             
-            // 3. 從現有清單移除並補充新任務
+            // Cycle task
             currentTasks = currentTasks.filter(t => t !== taskText);
-            const nextTask = missionPool.find(t => !currentTasks.includes(t));
-            currentTasks.push(nextTask);
-
+            const next = missionPool.find(t => !currentTasks.includes(t) && Math.random() > 0.5) || missionPool[0];
+            currentTasks.push(next);
             renderActiveTasks();
-            syncToAdmin(`Unlocked Achievement: ${taskText}`, "ACHIEVEMENT");
-            alert(`🎉 Achievement Unlocked: ${taskText}`);
+            syncToAdmin(`Unlocked: ${taskText}`, "ACHIEVEMENT");
+        }
+
+        function clearAchievements() {
+            if(!confirm("Are you sure you want to clear your achievement history? This cannot be undone.")) return;
+            db.collection("users").doc(auth.currentUser.uid).collection("achievements").get().then(snap => {
+                snap.forEach(doc => doc.ref.delete());
+                alert("Vault cleared.");
+            });
         }
 
         function renderActiveTasks() {
@@ -128,67 +170,91 @@
             container.innerHTML = currentTasks.map(t => `
                 <div onclick="completeAction('${t}')" class="p-4 bg-slate-50 border border-slate-100 rounded-2xl cursor-pointer hover:bg-[#6B8E23]/10 hover:border-[#6B8E23]/30 transition group">
                     <div class="flex justify-between items-center">
-                        <span class="text-slate-600 group-hover:text-[#6B8E23] transition">${t}</span>
+                        <span class="text-slate-600 group-hover:text-[#6B8E23] transition truncate pr-2">${t}</span>
                         <i class="fas fa-plus-circle text-slate-300 group-hover:text-[#6B8E23]"></i>
                     </div>
                 </div>
             `).join('');
         }
 
-        function loadAchievementVault() {
-            if(!auth.currentUser) return;
-            db.collection("users").doc(auth.currentUser.uid).collection("achievements").orderBy("timestamp", "desc").onSnapshot(snap => {
-                const list = document.getElementById('achievementList');
-                list.innerHTML = "";
-                snap.forEach(doc => {
-                    const ach = doc.data();
-                    const date = ach.timestamp ? ach.timestamp.toDate().toLocaleDateString() : 'Just now';
-                    list.innerHTML += `
-                        <div class="achievement-badge flex flex-col gap-1 animate-in zoom-in duration-300">
-                            <span class="opacity-60 text-[8px] uppercase tracking-tighter">${date}</span>
-                            <span class="text-sm font-black italic">🏆 ${ach.task}</span>
-                        </div>`;
-                });
-            });
-        }
-
-        // ======= General Logic =======
-        function switchTab(t) {
-            ['ai', 'social', 'milestones'].forEach(view => {
-                document.getElementById(`view-${view}`).classList.toggle('hidden', view !== t);
-                document.getElementById(`btn-${view}`).className = view === t ? 
-                    "w-full text-left px-5 py-4 rounded-xl font-bold text-sm bg-white shadow-sm text-[#6B8E23]" : 
-                    "w-full text-left px-5 py-4 rounded-xl font-bold text-sm text-slate-400 hover:bg-white/50 transition";
-            });
-            if(t === 'milestones') loadAchievementVault();
-        }
-
         async function sendMessage() {
             const input = document.getElementById('chatInput');
             const msg = input.value.trim();
-            if(!msg) return;
+            if(!msg || !GEMINI_API_KEY) return;
             appendBubble(msg, 'user');
             input.value = "";
-            const prompt = `P!LOT Counselor. Status: ${JSON.stringify(mentalState)}. User: "${msg}". Response in English. End with JSON: {"metrics": {"anxiety":0,"stress":0,"depression":0,"loneliness":0,"award_delta":10}}`;
+            const prompt = `P!LOT AI Counselor. Context: ${JSON.stringify(mentalState)}. User: "${msg}". Warm response in English. End with: {"metrics": {"anxiety":0,"stress":0,"depression":0,"loneliness":0,"award_delta":10}}`;
             try {
                 const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
                 });
                 const data = await res.json();
-                const fullText = data.candidates[0].content.parts[0].text;
-                appendBubble(fullText.replace(/\{[\s\S]*\}/, "").trim(), 'ai');
+                const text = data.candidates[0].content.parts[0].text;
+                appendBubble(text.replace(/\{[\s\S]*\}/, "").trim(), 'ai');
                 syncToAdmin(msg, "AI_CHAT");
-            } catch(e) {}
+            } catch (e) { appendBubble("System offline.", 'ai'); }
         }
 
-        function appendBubble(text, role) {
-            const win = document.getElementById('chatWindow');
-            const div = document.createElement('div');
-            div.className = `chat-bubble ${role}-bubble shadow-sm`;
-            div.innerHTML = marked.parse(text);
-            win.appendChild(div);
-            win.scrollTop = win.scrollHeight;
+        function signIn() { auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }
+        function signOut() { auth.signOut().then(() => location.reload()); }
+
+        auth.onAuthStateChanged(u => {
+            if(u) {
+                document.getElementById('authArea').classList.add('hidden');
+                document.getElementById('userInfo').classList.remove('hidden');
+                document.getElementById('logoutBtn').classList.remove('hidden');
+                document.getElementById('userName').innerText = u.displayName;
+                document.getElementById('userAvatar').src = u.photoURL;
+                setupMissions();
+                loadSocial();
+            }
+        });
+
+        // Tab and UI functions...
+        function switchTab(t) {
+            ['ai', 'social', 'milestones'].forEach(view => {
+                document.getElementById(`view-${view}`).classList.toggle('hidden', view !== t);
+                document.getElementById(`btn-${view}`).className = view === t ? "w-full text-left px-5 py-4 rounded-xl font-bold text-sm bg-white shadow-sm text-[#6B8E23]" : "w-full text-left px-5 py-4 rounded-xl font-bold text-sm text-slate-400 hover:bg-white/50 transition";
+            });
+            if(t === 'milestones') loadAchievementVault();
+        }
+
+        function loadAchievementVault() {
+            db.collection("users").doc(auth.currentUser.uid).collection("achievements").orderBy("timestamp", "desc").onSnapshot(snap => {
+                const list = document.getElementById('achievementList');
+                list.innerHTML = "";
+                snap.forEach(doc => {
+                    const ach = doc.data();
+                    const date = ach.timestamp ? ach.timestamp.toDate().toLocaleDateString() : 'Now';
+                    list.innerHTML += `<div class="achievement-badge flex flex-col gap-1">
+                        <span class="opacity-50 text-[7px] uppercase tracking-tighter">${date}</span>
+                        <span class="text-xs font-black italic">🏆 ${ach.task}</span>
+                    </div>`;
+                });
+            });
+        }
+
+        function loadSocial() {
+            db.collection("posts").orderBy("timestamp", "desc").onSnapshot(snap => {
+                const feed = document.getElementById('socialFeed');
+                feed.innerHTML = "";
+                snap.forEach(doc => {
+                    const p = doc.data();
+                    feed.innerHTML += `<div class="p-6 bg-slate-50 rounded-3xl border border-slate-100 mb-4">
+                        <div class="flex items-center gap-2 mb-2"><img src="${p.avatar}" class="w-6 h-6 rounded-full"><span class="font-bold text-xs text-slate-700">${p.name}</span></div>
+                        <p class="text-sm text-slate-500">${p.content}</p>
+                    </div>`;
+                });
+            });
+        }
+
+        function createPost() {
+            const input = document.getElementById('postInput');
+            if(!input.value.trim()) return;
+            db.collection("posts").add({ name: auth.currentUser.displayName, avatar: auth.currentUser.photoURL, content: input.value, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+            syncToAdmin(input.value, "SOCIAL");
+            input.value = "";
         }
 
         function syncToAdmin(msg, type) {
@@ -199,16 +265,14 @@
             }, { merge: true });
         }
 
-        function signIn() { auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }
-        auth.onAuthStateChanged(u => {
-            if(u) {
-                document.getElementById('authArea').classList.add('hidden');
-                document.getElementById('userInfo').classList.remove('hidden');
-                document.getElementById('userName').innerText = u.displayName;
-                document.getElementById('userAvatar').src = u.photoURL;
-                setupMissions();
-            }
-        });
+        function appendBubble(text, role) {
+            const win = document.getElementById('chatWindow');
+            const div = document.createElement('div');
+            div.className = `chat-bubble ${role}-bubble shadow-sm`;
+            div.innerHTML = marked.parse(text);
+            win.appendChild(div);
+            win.scrollTop = win.scrollHeight;
+        }
     </script>
 </body>
 </html>
